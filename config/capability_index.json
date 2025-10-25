@@ -1,0 +1,72 @@
+{
+  "capabilities": [
+    {
+      "id": "sql",
+      "type": "tool",
+      "server": "srv_sql",
+      "tool": "sql.query",
+      "tags": ["data", "query", "sql", "sales", "orders"],
+      "description": "Execute SQL queries on CSV data to retrieve sales, orders, and outlet information"
+    },
+    {
+      "id": "pandas",
+      "type": "tool",
+      "server": "srv_pandas",
+      "tool": "dataframe.transform",
+      "tags": ["transform", "dataframe", "rolling", "aggregate", "groupby"],
+      "description": "Transform dataframes with pandas operations like rolling averages, groupby, and filtering"
+    },
+    {
+      "id": "viz_spec",
+      "type": "agent",
+      "agent": "viz_spec_agent",
+      "tags": ["visualization", "chart", "plot", "spec"],
+      "description": "Generate visualization specifications from dataframes"
+    },
+    {
+      "id": "plotly",
+      "type": "tool",
+      "server": "srv_plotly",
+      "tool": "plotly.render",
+      "tags": ["plot", "chart", "visualization", "render", "image", "png"],
+      "description": "Render charts and plots to PNG images using Plotly"
+    },
+    {
+      "id": "filesystem",
+      "type": "tool",
+      "server": "srv_fs",
+      "tool": "file.read",
+      "tags": ["file", "read", "pdf", "upload", "document"],
+      "description": "Read files from disk including PDFs and documents"
+    },
+    {
+      "id": "extraction",
+      "type": "agent",
+      "agent": "extraction_agent",
+      "tags": ["extract", "parse", "pdf", "invoice", "document"],
+      "description": "Extract structured data from PDFs and documents"
+    },
+    {
+      "id": "tracking",
+      "type": "tool",
+      "server": "srv_tracking",
+      "tool": "tracking.upsert",
+      "tags": ["tracking", "update", "invoice", "record", "database"],
+      "description": "Create or update tracking records with invoice and document information"
+    },
+    {
+      "id": "validator",
+      "type": "agent",
+      "agent": "validator",
+      "tags": ["validate", "check", "quality", "verification"],
+      "description": "Validate outputs and check for data quality issues"
+    },
+    {
+      "id": "reducer",
+      "type": "agent",
+      "agent": "reducer",
+      "tags": ["reduce", "aggregate", "final", "output"],
+      "description": "Aggregate and format final results"
+    }
+  ]
+}

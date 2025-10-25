@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+pandas
+duckdb
+plotly
+kaleido
+structlog
+networkx
+pdfplumber
+Pillow

@@ -1,0 +1,109 @@
+[
+  {
+    "tracking_id": "trk_3f13dbbf",
+    "created_at": "2025-10-25T23:05:28.148616",
+    "updated_at": "2025-10-25T23:05:28.148631",
+    "extraction_status": "error",
+    "error": "No PDF content found in file reference",
+    "raw_input_keys": [
+      "file_ref"
+    ]
+  },
+  {
+    "tracking_id": "trk_a32a484b",
+    "created_at": "2025-10-25T23:06:02.565486",
+    "updated_at": "2025-10-25T23:06:02.565496",
+    "extraction_status": "error",
+    "error": "No PDF content found in file reference",
+    "raw_input_keys": [
+      "file_ref"
+    ]
+  },
+  {
+    "tracking_id": "trk_bb07fb51",
+    "created_at": "2025-10-25T23:06:21.668539",
+    "updated_at": "2025-10-25T23:06:21.668549",
+    "extraction_status": "error",
+    "error": "No PDF content found in file reference",
+    "raw_input_keys": [
+      "file_ref"
+    ]
+  },
+  {
+    "tracking_id": "trk_f122efcb",
+    "created_at": "2025-10-25T23:07:12.632029",
+    "updated_at": "2025-10-25T23:07:12.632037",
+    "extraction_status": "error",
+    "error": "No PDF content found in file reference",
+    "raw_input_keys": [
+      "file_ref"
+    ]
+  },
+  {
+    "tracking_id": "trk_bfc6051b",
+    "created_at": "2025-10-25T23:08:11.653235",
+    "updated_at": "2025-10-25T23:08:11.653243",
+    "extraction_status": "error",
+    "error": "No PDF content found in file reference",
+    "raw_input_keys": [
+      "file_ref"
+    ]
+  },
+  {
+    "tracking_id": "trk_815c6ca9",
+    "created_at": "2025-10-25T23:08:48.373541",
+    "updated_at": "2025-10-25T23:08:48.373561",
+    "invoice_number": "INV-2025",
+    "date": "Not found",
+    "total_amount": 1650.0,
+    "vendor": "Not found",
+    "line_items": [],
+    "raw_text": "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nACME CORPORATION INVOICE\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nInvoice Number: INV-2025-001\nDate: January 15, 2025\nDue Date: February 15, 2025\nBill To:\nTech Solutions Inc.\n123 Business Street\nSan Francisco, CA 94102\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nITEMS:\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nItem Qty Price Total\nWidget Pro 10 $150.00 $1,500.00\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSubtotal: $1,500.00\nTax (10%): $150.00\nTotal: $1,650.00\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPayment Terms: Net 30\nReference: PO-2025-456",
+    "extraction_status": "success",
+    "pages_processed": 1,
+    "tables_found": 0,
+    "line_items_count": 0,
+    "file_metadata": {
+      "size_bytes": 87257,
+      "file_type": "pdf"
+    }
+  },
+  {
+    "tracking_id": "trk_744489cb",
+    "created_at": "2025-10-25T23:11:46.398943",
+    "updated_at": "2025-10-25T23:11:46.398953",
+    "invoice_number": "INV-2025",
+    "date": "Not found",
+    "total_amount": 1650.0,
+    "vendor": "Not found",
+    "line_items": [],
+    "raw_text": "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nACME CORPORATION INVOICE\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nInvoice Number: INV-2025-001\nDate: January 15, 2025\nDue Date: February 15, 2025\nBill To:\nTech Solutions Inc.\n123 Business Street\nSan Francisco, CA 94102\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nITEMS:\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nItem Qty Price Total\nWidget Pro 10 $150.00 $1,500.00\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSubtotal: $1,500.00\nTax (10%): $150.00\nTotal: $1,650.00\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPayment Terms: Net 30\nReference: PO-2025-456",
+    "extraction_status": "success",
+    "pages_processed": 1,
+    "tables_found": 0,
+    "line_items_count": 0,
+    "file_metadata": {
+      "size_bytes": 87257,
+      "file_type": "pdf"
+    }
+  },
+  {
+    "tracking_id": "trk_42ee61aa",
+    "created_at": "2025-10-25T23:17:36.545664",
+    "updated_at": "2025-10-25T23:17:36.545677",
+    "invoice_number": "INV-2025",
+    "date": "Not found",
+    "total_amount": 1650.0,
+    "vendor": "Not found",
+    "line_items": [],
+    "raw_text": "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nACME CORPORATION INVOICE\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nInvoice Number: INV-2025-001\nDate: January 15, 2025\nDue Date: February 15, 2025\nBill To:\nTech Solutions Inc.\n123 Business Street\nSan Francisco, CA 94102\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nITEMS:\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nItem Qty Price Total\nWidget Pro 10 $150.00 $1,500.00\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSubtotal: $1,500.00\nTax (10%): $150.00\nTotal: $1,650.00\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPayment Terms: Net 30\nReference: PO-2025-456",
+    "extraction_status": "success",
+    "pages_processed": 1,
+    "tables_found": 0,
+    "line_items_count": 0,
+    "file_metadata": {
+      "size_bytes": 87257,
+      "file_type": "pdf"
+    }
+  }
+]

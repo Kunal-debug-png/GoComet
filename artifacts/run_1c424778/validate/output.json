@@ -1,0 +1,7 @@
+{
+  "valid": true,
+  "checks": {
+    "non_empty": true,
+    "no_pii": true
+  }
+}

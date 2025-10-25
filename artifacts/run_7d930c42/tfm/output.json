@@ -1,0 +1,141 @@
+{
+  "rows": [
+    {
+      "order_id": 1001,
+      "outlet_id": 42,
+      "week": "2025-W35",
+      "sales": 1234.5,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1002,
+      "outlet_id": 42,
+      "week": "2025-W36",
+      "sales": 1456.2,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1003,
+      "outlet_id": 42,
+      "week": "2025-W37",
+      "sales": 1567.8,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1004,
+      "outlet_id": 42,
+      "week": "2025-W38",
+      "sales": 1890.4,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1005,
+      "outlet_id": 42,
+      "week": "2025-W39",
+      "sales": 2100.75,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1006,
+      "outlet_id": 42,
+      "week": "2025-W40",
+      "sales": 1980.3,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1007,
+      "outlet_id": 42,
+      "week": "2025-W41",
+      "sales": 1750.6,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1008,
+      "outlet_id": 42,
+      "week": "2025-W42",
+      "sales": 2250.25,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1009,
+      "outlet_id": 42,
+      "week": "2025-W43",
+      "sales": 1950.8,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1010,
+      "outlet_id": 42,
+      "week": "2025-W44",
+      "sales": 2400.9,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1011,
+      "outlet_id": 42,
+      "week": "2025-W45",
+      "sales": 1850.4,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1012,
+      "outlet_id": 42,
+      "week": "2025-W46",
+      "sales": 2550.1,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1013,
+      "outlet_id": 42,
+      "week": "2025-W47",
+      "sales": 2250.7,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1014,
+      "outlet_id": 42,
+      "week": "2025-W48",
+      "sales": 2700.85,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1015,
+      "outlet_id": 42,
+      "week": "2025-W49",
+      "sales": 1950.3,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1016,
+      "outlet_id": 42,
+      "week": "2025-W50",
+      "sales": 2850.45,
+      "product": "Widget"
+    },
+    {
+      "order_id": 1017,
+      "outlet_id": 42,
+      "week": "2025-W51",
+      "sales": 2050.9,
+      "product": "Gadget"
+    },
+    {
+      "order_id": 1018,
+      "outlet_id": 42,
+      "week": "2025-W52",
+      "sales": 3000.25,
+      "product": "Widget"
+    }
+  ],
+  "shape": [
+    18,
+    5
+  ],
+  "columns": [
+    "order_id",
+    "outlet_id",
+    "week",
+    "sales",
+    "product"
+  ]
+}

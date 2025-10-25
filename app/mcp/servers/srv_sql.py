@@ -1,0 +1,40 @@
+import duckdb
+from pathlib import Path
+
+class SQLServer:
+    def __init__(self, csv_path: str = "./samples/orders.csv"):
+        self.csv_path = csv_path
+        self.conn = duckdb.connect(':memory:')
+    
+    def sql_query(self, sql: str) -> dict:
+        """Execute SQL query on orders CSV"""
+        try:
+            # Read CSV and execute query
+            result = self.conn.execute(f"""
+                SELECT * FROM read_csv_auto('{self.csv_path}')
+                WHERE {sql}
+            """).df()
+            
+            return {
+                "rows": result.to_dict('records'),
+                "row_count": len(result)
+            }
+        except Exception as e:
+            return {"error": str(e), "rows": []}
+    
+    def manifest(self) -> dict:
+        """Return tool manifest"""
+        return {
+            "server": "srv_sql",
+            "tools": [{
+                "name": "sql.query",
+                "description": "Execute SQL query on CSV data",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "sql": {"type": "string", "description": "SQL WHERE clause"}
+                    },
+                    "required": ["sql"]
+                }
+            }]
+        }
