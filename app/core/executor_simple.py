@@ -4,19 +4,26 @@ import json
 import time
 import base64
 import re
+import os
+import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
+from dateutil import parser
+from typing import Dict, Any, Optional, List
 import networkx as nx
+from app.storage.database import Database
 from app.storage.artifacts import ArtifactManager
 from app.mcp.client_pool import MCPClientPool
 from app.observability.logger import log_node_execution, logger
 
 class Executor:
-    def __init__(self, artifacts: ArtifactManager, mcp_pool: MCPClientPool):
+    def __init__(self, db: Database, artifacts: ArtifactManager, mcp_pool: MCPClientPool):
+        self.db = db
         self.artifacts = artifacts
         self.mcp_pool = mcp_pool
         self.timeout_sec = 30
         self.max_retries = 1
+        self._llama_api_key = os.getenv("LLAMA_CLOUD_API_KEY")
+        self._has_llama = bool(self._llama_api_key)
     
     def _build_graph(self, plan: Dict) -> nx.DiGraph:
         """Build NetworkX graph from plan"""
@@ -34,10 +41,25 @@ class Executor:
         
         return G
     
+    def _compute_idempotency_key(self, node: Dict, upstream_hashes: list) -> str:
+        """Compute idempotency key for caching"""
+        key_data = {
+            "type": node.get("type"),
+            "server": node.get("server"),
+            "tool": node.get("tool"),
+            "agent": node.get("agent"),
+            "args": sorted(node.get("args", {}).items()),
+            "upstreams": sorted(upstream_hashes)
+        }
+        
+        key_str = json.dumps(key_data, sort_keys=True)
+        return hashlib.sha256(key_str.encode()).hexdigest()
+    
     async def execute(self, run_id: str, plan: Dict):
         """Execute DAG plan"""
         try:
             logger.info("execution_started", run_id=run_id, plan_id=plan["plan_id"])
+            self.db.update_run_status(run_id, "running")
             
             # Build graph
             graph = self._build_graph(plan)
@@ -61,11 +83,13 @@ class Executor:
             # Build final result
             reduce_output = node_outputs.get("reduce", {})
             
+            self.db.update_run_status(run_id, "success", result=reduce_output)
             logger.info("execution_completed", run_id=run_id)
             return reduce_output
             
         except Exception as e:
             logger.error("execution_failed", run_id=run_id, error=str(e))
+            self.db.update_run_status(run_id, "failed", error=str(e))
             raise
     
     async def _execute_node(self, run_id: str, node: Dict, upstream_outputs: Dict) -> Any:
@@ -77,6 +101,17 @@ class Executor:
         
         try:
             logger.info("node_started", run_id=run_id, node_id=node_id, type=node_type)
+            
+            # Compute idempotency key
+            upstream_hashes = [
+                self.artifacts.compute_hash(out) 
+                for out in upstream_outputs.values() if out
+            ]
+            idem_key = self._compute_idempotency_key(node, upstream_hashes)
+            
+            # Create node record
+            self.db.create_node(run_id, node_id, node_type, idem_key)
+            self.db.update_node_status(run_id, node_id, "running", start_ms=start_ms)
             
             # Gather inputs from bindings
             inputs = await self._gather_inputs(run_id, node, upstream_outputs)
@@ -92,6 +127,11 @@ class Executor:
             
             end_ms = int(time.time() * 1000)
             
+            # Update node status
+            self.db.update_node_status(run_id, node_id, "success", 
+                                      output_artifact=artifact_uri,
+                                      end_ms=end_ms)
+            
             log_node_execution(run_id, node_id, node_type, "success",
                              start_ms, end_ms, artifact_uri=artifact_uri)
             
@@ -100,12 +140,14 @@ class Executor:
         except asyncio.TimeoutError:
             end_ms = int(time.time() * 1000)
             error = f"Timeout after {self.timeout_sec}s"
+            self.db.update_node_status(run_id, node_id, "failed", error=error, end_ms=end_ms)
             log_node_execution(run_id, node_id, node_type, "failed", start_ms, end_ms, error=error)
             raise
         
         except Exception as e:
             end_ms = int(time.time() * 1000)
             error = str(e)
+            self.db.update_node_status(run_id, node_id, "failed", error=error, end_ms=end_ms)
             log_node_execution(run_id, node_id, node_type, "failed", start_ms, end_ms, error=error)
             raise
     
@@ -179,11 +221,86 @@ class Executor:
                 "mark": "line"
             },
             "data": rows,
-            "title": f"Weekly Sales for Outlet 42"
+            "title": f"Weekly Sales"
         }
     
+    def _extract_with_llama(self, pdf_content: bytes, temp_dir: Optional[str] = None) -> dict:
+        """Extract text and structured data from PDF using LlamaExtract"""
+        try:
+            from llama_cloud_services import LlamaExtract
+            from pydantic import BaseModel, Field
+            
+            # Define the invoice data schema
+            class LineItem(BaseModel):
+                description: str = Field(default="", description="Item description")
+                quantity: float = Field(default=1.0, description="Item quantity")
+                unit_price: Optional[float] = Field(default=None, description="Unit price")
+                total: Optional[float] = Field(default=None, description="Total for this item")
+            
+            class InvoiceData(BaseModel):
+                invoice_number: str = Field(default="", description="Invoice number or ID")
+                date: str = Field(default="", description="Invoice date")
+                total_amount: Optional[float] = Field(default=None, description="Total amount due")
+                vendor: str = Field(default="", description="Vendor or seller name")
+                line_items: List[LineItem] = Field(default_factory=list, description="List of line items")
+            
+            # Save PDF to temporary file
+            import tempfile
+            
+            # Use system temp directory if not specified
+            if temp_dir is None:
+                temp_dir = tempfile.gettempdir()
+            
+            temp_file = os.path.join(temp_dir, f"temp_pdf_{uuid.uuid4().hex}.pdf")
+            try:
+                # Ensure temp directory exists
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                with open(temp_file, "wb") as f:
+                    f.write(pdf_content)
+                
+                # Initialize LlamaExtract with API key
+                extractor = LlamaExtract(api_key=self._llama_api_key)
+                
+                # Create or get extraction agent with schema
+                try:
+                    # Try to get existing agent
+                    agent = extractor.get_agent(name="invoice-extractor")
+                except:
+                    # Create new agent if it doesn't exist
+                    agent = extractor.create_agent(name="invoice-extractor", data_schema=InvoiceData)
+                
+                # Extract data from PDF
+                result = agent.extract(temp_file)
+                
+                # Return structured data
+                if hasattr(result, 'data') and result.data:
+                    text = json.dumps(result.data, indent=2)
+                    return {"text": text, "structured_data": result.data}
+                else:
+                    text = str(result)
+                    return {"text": text, "structured_data": None}
+                
+            finally:
+                # Clean up temp file
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    
+        except Exception as e:
+            logger.error(f"Error with LlamaExtract: {str(e)}")
+            raise
+    
     def _extract_text_from_pdf(self, pdf_content: bytes) -> str:
-        """Extract text from PDF content"""
+        """Extract text from PDF content using hybrid approach"""
+        # Try LlamaExtract first if API key is available
+        if self._has_llama:
+            try:
+                result = self._extract_with_llama(pdf_content)
+                return result.get("text", "")
+            except Exception as e:
+                logger.warning(f"LlamaExtract failed, falling back to pdfplumber: {str(e)}")
+        
+        # Fallback to pdfplumber
         import pdfplumber
         import io
         
@@ -201,7 +318,19 @@ class Executor:
         return text.strip()
     
     def _extract_tables_from_pdf(self, pdf_content: bytes) -> list:
-        """Extract tables from PDF content"""
+        """Extract tables from PDF content using hybrid approach"""
+        # Try LlamaExtract first if API key is available
+        if self._has_llama:
+            try:
+                result = self._extract_with_llama(pdf_content)
+                structured = result.get("structured_data")
+                if structured:
+                    # Convert structured data to table format if possible
+                    return [structured] if isinstance(structured, dict) else structured if isinstance(structured, list) else []
+            except Exception as e:
+                logger.warning(f"LlamaExtract failed, falling back to pdfplumber: {str(e)}")
+        
+        # Fallback to pdfplumber
         import pdfplumber
         import io
         
@@ -219,7 +348,7 @@ class Executor:
         return tables
     
     def _parse_invoice_data(self, text: str, tables: list) -> Dict:
-        """Parse invoice data from extracted text and tables"""
+        """Parse invoice data from extracted text and tables with improved flexibility"""
         result = {
             "invoice_number": "Not found",
             "date": "Not found",
@@ -229,60 +358,58 @@ class Executor:
             "raw_text": text[:1000] + "..." if len(text) > 1000 else text
         }
         
-        # Simple pattern matching for common invoice fields
-        # Look for invoice number patterns
-        invoice_num_match = re.search(r'(?:invoice|bill)[^\d]*(\d{4,})', text, re.IGNORECASE)
-        if invoice_num_match:
-            result["invoice_number"] = f"INV-{invoice_num_match.group(1)}"
-        
-        # Look for date patterns
-        date_patterns = [
-            r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',  # MM/DD/YYYY or DD/MM/YYYY
-            r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})'     # YYYY-MM-DD
+        # Expanded regex patterns for invoice number
+        invoice_num_patterns = [
+            r'(?:invoice|bill|no[.]?)[^\d]*(\d{4,})',  # Account for possible punctuation like "Invoice #1234"
+            r'([A-Za-z0-9]+)[^\d]*(?:inv|invoice|bill)',  # Handles alphanumeric invoice numbers
         ]
+        for pattern in invoice_num_patterns:
+            invoice_num_match = re.search(pattern, text, re.IGNORECASE)
+            if invoice_num_match:
+                result["invoice_number"] = invoice_num_match.group(1)
+                break
         
-        for pattern in date_patterns:
-            date_match = re.search(pattern, text)
+        # Flexible date parsing with dateutil.parser (handles multiple formats)
+        try:
+            date_match = re.search(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2}|\b(\w{3,9}\s?\d{1,2}[,\s]?\s?\d{4})\b', text)
             if date_match:
-                try:
-                    date_str = date_match.group(1)
-                    # Try to parse the date to ensure it's valid
-                    datetime.strptime(date_str, '%Y-%m-%d')
-                    result["date"] = date_str
-                    break
-                except (ValueError, AttributeError):
-                    continue
+                date_str = date_match.group(0)
+                result["date"] = parser.parse(date_str).strftime('%Y-%m-%d')
+        except Exception as e:
+            result["date"] = "Not found"
         
-        # Look for total amount
-        total_matches = re.findall(r'total.*?\$?\s*(\d{1,3}(?:[,\.]\d{3})*(?:\.\d{2})?)', text, re.IGNORECASE)
+        # Expanded total amount regex to cover more variations
+        total_matches = re.findall(r'(?i)(total|amount\s*due|grand\s*total)[^\d]*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', text)
         if total_matches:
             try:
-                amount_str = total_matches[-1].replace(',', '')
-                result["total_amount"] = float(amount_str)
-            except (ValueError, IndexError):
-                pass
+                total_value = total_matches[-1][1].replace(',', '')
+                result["total_amount"] = float(total_value)
+            except ValueError:
+                result["total_amount"] = None
         
-        # Look for vendor name
-        vendor_matches = re.search(r'(?:from|vendor|supplier)[:;\s]+([A-Z][a-zA-Z\s\.&,]+(?:Inc|Ltd|LLC|GmbH|Pvt|LLP|Corp|Company)?\b)', text, re.IGNORECASE)
-        if vendor_matches:
-            result["vendor"] = vendor_matches.group(1).strip()
-        
-        # Process tables to find line items
+        # Flexible vendor matching with multiple labels
+        vendor_patterns = [
+            r'(?:from|vendor|supplier)[^\w]*(\w+(?:\s\w+)*\s?(?:Inc|Ltd|LLC|Corp|GmbH|Pvt|LLP)?)',
+            r'(?:issued\s*by|billed\s*to)\s?([A-Za-z][A-Za-z\s\.&,]+(?:Inc|Ltd|LLC|Corp|GmbH|Pvt|LLP|Company)?)'
+        ]
+        for pattern in vendor_patterns:
+            vendor_match = re.search(pattern, text, re.IGNORECASE)
+            if vendor_match:
+                result["vendor"] = vendor_match.group(1).strip()
+                break
+
+        # Process tables to find line items with improved flexibility
         for table in tables:
             if len(table) > 1:  # At least header + one row
                 headers = [str(cell or '').lower().strip() for cell in table[0]]
                 
-                # Try to identify columns of interest
-                item_col = next((i for i, h in enumerate(headers) 
-                               if any(term in h for term in ['item', 'description'])), -1)
-                qty_col = next((i for i, h in enumerate(headers) 
-                              if 'qty' in h or 'quantity' in h), -1)
-                price_col = next((i for i, h in enumerate(headers) 
-                                if 'price' in h and 'total' not in h), -1)
-                total_col = next((i for i, h in enumerate(headers) 
-                                if 'total' in h and 'price' not in h), -1)
+                # Try to identify columns with more flexibility
+                item_col = next((i for i, h in enumerate(headers) if any(term in h for term in ['item', 'description', 'product'])), -1)
+                qty_col = next((i for i, h in enumerate(headers) if any(term in h for term in ['qty', 'quantity', 'count'])), -1)
+                price_col = next((i for i, h in enumerate(headers) if any(term in h for term in ['price', 'unit price', 'rate'])), -1)
+                total_col = next((i for i, h in enumerate(headers) if any(term in h for term in ['total', 'amount', 'cost'])), -1)
                 
-                # If we found relevant columns, extract line items
+                # If relevant columns are found, extract line items
                 if item_col >= 0 and (price_col >= 0 or total_col >= 0):
                     for row in table[1:]:  # Skip header
                         try:
@@ -297,14 +424,13 @@ class Executor:
                         except (ValueError, IndexError):
                             continue
                     
-                    # If we found line items, no need to process more tables
+                    # If line items are found, no need to process more tables
                     if result["line_items"]:
                         break
-        
+
         return result
-    
     def _extraction_agent(self, inputs: Dict) -> Dict:
-        """Extract structured data from PDF content"""
+        """Extract structured data from PDF content using hybrid approach"""
         try:
             # Get the file reference from inputs
             file_ref = inputs.get("file_ref", {})
@@ -319,18 +445,40 @@ class Executor:
             # Decode the base64 content
             pdf_content = base64.b64decode(pdf_base64)
             
-            # Extract text and tables from PDF
-            text = self._extract_text_from_pdf(pdf_content)
-            tables = self._extract_tables_from_pdf(pdf_content)
+            # Try LlamaExtract first if API key is available
+            extraction_method = "pdfplumber"
+            result = None
             
-            # Parse the extracted data
-            result = self._parse_invoice_data(text, tables)
+            if self._has_llama:
+                try:
+                    result = self._extract_with_llama(pdf_content)
+                    structured = result.get("structured_data")
+                    
+                    if structured and isinstance(structured, dict):
+                        # LlamaExtract returned structured data, format it
+                        extraction_method = "llama_extract"
+                        result = self._format_llama_extraction(structured)
+                    else:
+                        # Fall through to pdfplumber
+                        raise ValueError("LlamaExtract did not return structured data")
+                except Exception as e:
+                    logger.warning(f"LlamaExtract failed: {str(e)}. Falling back to pdfplumber.")
+                    extraction_method = "pdfplumber (fallback)"
+            
+            # Use pdfplumber if LlamaExtract wasn't successful
+            if not result or extraction_method.startswith("pdfplumber"):
+                text = self._extract_text_from_pdf(pdf_content)
+                tables = self._extract_tables_from_pdf(pdf_content)
+                
+                # Parse the extracted data
+                result = self._parse_invoice_data(text, tables)
             
             # Add metadata
             result.update({
                 "extraction_status": "success",
-                "pages_processed": len(text.split("\f")),
-                "tables_found": len(tables),
+                "extraction_method": extraction_method,
+                "pages_processed": result.get("pages_processed", 1),
+                "tables_found": len(result.get("line_items", [])),
                 "line_items_count": len(result.get("line_items", [])),
                 "file_metadata": {
                     "size_bytes": len(pdf_content),
@@ -347,6 +495,23 @@ class Executor:
                 "error": str(e),
                 "raw_input_keys": list(inputs.keys()) if isinstance(inputs, dict) else []
             }
+    
+    def _format_llama_extraction(self, structured_data: dict) -> Dict:
+        """Format LlamaExtract results into invoice format"""
+        result = {
+            "invoice_number": structured_data.get("invoice_number", "Not found"),
+            "date": structured_data.get("date", "Not found"),
+            "total_amount": structured_data.get("total_amount", structured_data.get("amount", None)),
+            "vendor": structured_data.get("vendor", structured_data.get("seller", "Not found")),
+            "line_items": structured_data.get("line_items", structured_data.get("items", [])),
+            "raw_text": json.dumps(structured_data, indent=2)
+        }
+        
+        # Handle different possible key names from LlamaExtract
+        if result["invoice_number"] == "Not found":
+            result["invoice_number"] = structured_data.get("invoice_id", "Not found")
+        
+        return result
     
     def _validator_agent(self, inputs: Dict) -> Dict:
         """Validate outputs"""

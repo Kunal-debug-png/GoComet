@@ -17,7 +17,7 @@ artifacts = ArtifactManager()
 mcp_pool = MCPClientPool()
 route_classifier = Router()
 planner = Planner()
-executor = Executor(artifacts, mcp_pool)
+executor = Executor(db, artifacts, mcp_pool)
 
 # Store run results in memory (simple CSV-based approach)
 run_results = {}
