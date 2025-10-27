@@ -121,18 +121,13 @@ class Planner:
         """Build DAG plan - template-based or dynamic"""
         plan_id = f"pln_{uuid.uuid4().hex[:8]}"
         
-        print(f"[PLANNER] Input - Flow: {flow_type}, Query: '{query}', Context: {context}")
-        
         if flow_type == "flow_dynamic":
-            # Build DAG dynamically from capability index
             result = self._build_dynamic_plan(plan_id, query, context)
         elif flow_type in self.templates:
-            # Use template-based planning
             result = self._build_template_plan(plan_id, flow_type, context)
         else:
             raise ValueError(f"Unknown flow type: {flow_type}")
         
-        print(f"[PLANNER] Generated plan {plan_id} with {len(result['nodes'])} nodes")
         return result
     
     def _build_template_plan(self, plan_id: str, flow_type: str, context: Dict) -> Dict:
@@ -142,60 +137,25 @@ class Planner:
         # Deep copy template
         plan = json.loads(json.dumps(template))
         
-        # Inject context-specific args
         if flow_type == "flow_plot":
-            print(f"[PLANNER] Building flow_plot with context: {context}")
-            
-            # Build SQL WHERE clause with outlet and time filtering
             sql_conditions = []
             
             outlet = context.get("outlet")
             if outlet:
                 sql_conditions.append(f"outlet_id = {outlet}")
-                print(f"[PLANNER] Added outlet filter: outlet_id = {outlet}")
             
-            # Add time period filtering for last N weeks
             week_count = context.get("week_count")
             if week_count:
-                print(f"\n[PLANNER] ===== WEEK CALCULATION START =====")
-                print(f"[PLANNER] Processing week_count: {week_count}")
-                
-                # Get current date and calculate week range dynamically
                 current_date = datetime.now()
-                print(f"[PLANNER] Current date: {current_date.strftime('%Y-%m-%d %H:%M:%S')}")
-                
-                # Calculate the start date (N weeks ago)
                 start_date = current_date - timedelta(weeks=week_count - 1)
-                print(f"[PLANNER] Start date ({week_count} weeks ago): {start_date.strftime('%Y-%m-%d')}")
-                
-                # Get ISO week numbers
-                current_year, current_week, current_day = current_date.isocalendar()
                 start_year, start_week, start_day = start_date.isocalendar()
-                
-                print(f"[PLANNER] Current ISO week: {current_year}-W{current_week:02d} (day {current_day})")
-                print(f"[PLANNER] Start ISO week: {start_year}-W{start_week:02d} (day {start_day})")
-                
-                # Format as ISO week strings
                 start_week_str = f"{start_year}-W{start_week:02d}"
-                current_week_str = f"{current_year}-W{current_week:02d}"
-                
-                print(f"[PLANNER] Calculated week range: {start_week_str} to {current_week_str}")
-                print(f"[PLANNER] This will filter for weeks >= {start_week_str}")
-                
-                # Add SQL condition for week range
                 sql_conditions.append(f"week >= '{start_week_str}'")
-                print(f"[PLANNER] Added SQL condition: week >= '{start_week_str}'")
-                print(f"[PLANNER] ===== WEEK CALCULATION END =====\n")
-            else:
-                print("[PLANNER] No week_count found in context")
             
-            # Combine conditions
             if sql_conditions:
                 sql_where = " AND ".join(sql_conditions)
             else:
-                sql_where = "1=1"  # Default: all records
-            
-            print(f"[PLANNER] Final SQL WHERE clause: {sql_where}")
+                sql_where = "1=1"
             
             sql_node = next(n for n in plan["nodes"] if n["id"] == "sql")
             sql_node["args"]["sql"] = sql_where

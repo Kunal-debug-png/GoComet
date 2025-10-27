@@ -43,42 +43,14 @@ async def execute_run(run_id: str, plan: Dict):
 async def route_request(req: RouteRequest):
     """Route request and create execution plan"""
     try:
-        print(f"\n{'#'*70}")
-        print(f"[API.route] NEW REQUEST RECEIVED")
-        print(f"{'#'*70}")
-        print(f"[API.route] Query: '{req.query}'")
-        print(f"[API.route] File path: {req.file_path}")
-        print(f"[API.route] Starting routing process...")
-        
-        # Route query
-        print(f"\n[API.route] Step 1: Calling Router...")
         flow_type, context = route_classifier.route(req.query, req.file_path)
-        print(f"[API.route] Router completed")
-        print(f"[API.route] Flow type: {flow_type}")
-        print(f"[API.route] Context: {context}")
-        
-        # Build plan
-        print(f"\n[API.route] Step 2: Calling Planner...")
         plan = planner.plan(flow_type, req.query, context)
-        print(f"[API.route] Planner completed")
-        print(f"[API.route] Plan ID: {plan['plan_id']}")
-        print(f"[API.route] Plan nodes: {len(plan['nodes'])}")
         
-        # Show SQL node details if present
-        sql_node = next((n for n in plan['nodes'] if n.get('tool') == 'sql.query'), None)
-        if sql_node:
-            print(f"[API.route] SQL WHERE clause: {sql_node['args']['sql']}")
-        
-        # Create run
-        print(f"\n[API.route] Step 3: Creating run in database...")
         run_id = f"run_{uuid.uuid4().hex[:8]}"
         db.create_run(run_id, plan["plan_id"], {
             "query": req.query,
             "file_path": req.file_path
         })
-        print(f"[API.route] Run created: {run_id}")
-        print(f"[API.route] Request processing complete")
-        print(f"{'#'*70}\n")
         
         return RouteResponse(
             plan_id=plan["plan_id"],
@@ -87,78 +59,35 @@ async def route_request(req: RouteRequest):
         )
     
     except Exception as e:
-        print(f"[API.route] ERROR occurred!")
-        print(f"[API.route] Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        print(f"{'#'*70}\n")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/runs/{run_id}/start")
 async def start_run(run_id: str, background_tasks: BackgroundTasks):
     """Start execution of a run"""
     try:
-        print(f"\n{'#'*70}")
-        print(f"[API.start] START RUN REQUEST")
-        print(f"{'#'*70}")
-        print(f"[API.start] Run ID: {run_id}")
-        
-        # Get run
-        print(f"[API.start] Fetching run from database...")
         run = db.get_run(run_id)
         if not run:
-            print(f"[API.start] ERROR: Run not found!")
             raise HTTPException(status_code=404, detail="Run not found")
         
-        print(f"[API.start] Run found, status: {run['status']}")
-        
         if run["status"] != "pending":
-            print(f"[API.start] ERROR: Run already {run['status']}")
             raise HTTPException(status_code=400, detail=f"Run already {run['status']}")
         
-        print(f"[API.start] Run details:")
-        print(f"  Plan ID: {run['plan_id']}")
-        print(f"  Query: {run['input_query']['query']}")
-        
-        # Get plan (need to reconstruct with proper routing)
-        print(f"\n[API.start] Reconstructing plan...")
-        print(f"[API.start] Original query: '{run['input_query']['query']}'")
-        
-        # Re-route to get proper flow_type and context
         query = run["input_query"]["query"]
         file_path = run["input_query"].get("file_path")
         
-        # Filter out placeholder file_path values
         if file_path in ["string", "", None]:
             file_path = None
-            print(f"[API.start] Ignoring placeholder file_path")
         
-        print(f"[API.start] Re-routing query to extract context...")
         flow_type, context = route_classifier.route(query, file_path)
-        print(f"[API.start] Re-routing complete")
-        print(f"[API.start] Flow type: {flow_type}")
-        print(f"[API.start] Context: {context}")
-        
         plan = planner.plan(flow_type, query, context)
-        print(f"[API.start] Plan reconstructed: {plan['plan_id']}")
-        print(f"[API.start] Plan has {len(plan['nodes'])} nodes")
         
-        # Execute in background
-        print(f"[API.start] Adding execution task to background...")
         background_tasks.add_task(execute_run, run_id, plan)
-        print(f"[API.start] Background task added, returning response")
-        print(f"{'#'*70}\n")
         
         return {"status": "started", "run_id": run_id}
     
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[API.start] ERROR occurred!")
-        print(f"[API.start] Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        print(f"{'#'*70}\n")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/runs/{run_id}", response_model=RunStatusResponse)
