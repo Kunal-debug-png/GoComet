@@ -145,20 +145,31 @@ class Planner:
                 sql_conditions.append(f"outlet_id = {outlet}")
             
             week_count = context.get("week_count")
-            if week_count:
-                current_date = datetime.now()
-                start_date = current_date - timedelta(weeks=week_count - 1)
-                start_year, start_week, start_day = start_date.isocalendar()
-                start_week_str = f"{start_year}-W{start_week:02d}"
-                sql_conditions.append(f"week >= '{start_week_str}'")
             
-            if sql_conditions:
-                sql_where = " AND ".join(sql_conditions)
+            # Don't filter in SQL if we have week_count - let pandas tail() handle it
+            # This ensures we get the LAST N weeks from the data
+            if not week_count:
+                # Only apply SQL date filtering if no week_count specified
+                if sql_conditions:
+                    sql_where = " AND ".join(sql_conditions)
+                else:
+                    sql_where = "1=1"
             else:
-                sql_where = "1=1"
+                # Just apply outlet filter in SQL, let pandas handle week limiting
+                if sql_conditions:
+                    sql_where = " AND ".join(sql_conditions)
+                else:
+                    sql_where = "1=1"
             
             sql_node = next(n for n in plan["nodes"] if n["id"] == "sql")
             sql_node["args"]["sql"] = sql_where
+            
+            # Update pandas transform to use tail(n) for last N weeks
+            tfm_node = next(n for n in plan["nodes"] if n["id"] == "tfm")
+            if week_count:
+                tfm_node["args"]["script"] = f"tail({week_count})"
+            else:
+                tfm_node["args"]["script"] = "head(20)"
         
         elif flow_type == "flow_pdf_tracking":
             # Update file path

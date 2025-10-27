@@ -539,8 +539,17 @@ class Executor:
         # Determine format
         if isinstance(result, bytes):
             format = "png"
-        elif isinstance(result, dict) and "rows" in result:
-            format = "json"
+        elif isinstance(result, dict):
+            # Check if it's a plotly stdio response that wasn't converted
+            if "image_base64" in result:
+                # Convert base64 to bytes for consistency
+                import base64
+                result = base64.b64decode(result["image_base64"])
+                format = "png"
+            elif "rows" in result:
+                format = "json"
+            else:
+                format = "json"
         else:
             format = "json"
         
