@@ -71,8 +71,8 @@ class Router:
         if not candidates:
             return "flow_custom", {}
         
-        # Build context with capability metadata
-        context = self._build_context(query, file_path, candidates)
+        # Extract context from query
+        context = self._extract_context(query, file_path)
         
         # Classify flow type based on candidates and query intent
         flow_type = self._classify_flow_from_candidates(candidates, query, file_path)
