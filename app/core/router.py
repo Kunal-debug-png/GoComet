@@ -71,23 +71,85 @@ class Router:
         if not candidates:
             return "flow_custom", {}
         
-        # Extract tags from top candidates
-        all_tags = set()
-        for candidate in candidates:
-            all_tags.update(candidate.get("tags", []))
+        # Build context with capability metadata
+        context = self._build_context(query, file_path, candidates)
         
-        # Extract context from query
-        context = self._extract_context(query, file_path)
+        # Classify flow type based on candidates and query intent
+        flow_type = self._classify_flow_from_candidates(candidates, query, file_path)
         
-        # Determine flow type based on capability tags (order matters)
-        if self._has_document_processing_intent(all_tags, file_path):
-            return "flow_pdf_tracking", context
-        elif self._has_visualization_intent(all_tags):
-            return "flow_plot", context
-        else:
-            # Dynamic flow based on capabilities
-            return "flow_dynamic", {"candidates": candidates, **context}
+        # Add candidates to context for dynamic flows
+        if flow_type == "flow_dynamic":
+            context["candidates"] = candidates
+        
+        return flow_type, context
     
+    def _classify_flow_from_candidates(self, candidates: list, query: str, file_path: str = None) -> str:
+        """
+        Classify flow type based on capability candidates and query analysis
+        """
+        query_lower = query.lower()
+        
+        # Strong indicators for specific flows
+        viz_keywords = ["plot", "chart", "graph", "visualiz", "render", "show", "display"]
+        doc_keywords = ["pdf", "document", "invoice", "extract", "upload", "file", "process"]
+        
+        # Check for explicit visualization intent in query
+        has_viz_keyword = any(keyword in query_lower for keyword in viz_keywords)
+        
+        # Check for explicit document processing intent in query  
+        has_doc_keyword = any(keyword in query_lower for keyword in doc_keywords)
+        
+        # Analyze candidate capabilities
+        candidate_types = {"viz": 0, "data": 0, "doc": 0, "file": 0}
+        
+        for candidate in candidates[:5]:  # Top 5 candidates
+            tags = set(candidate.get("tags", []))
+            
+            # Count visualization capabilities
+            if tags.intersection({"plot", "chart", "visualization", "render"}):
+                candidate_types["viz"] += 2
+            
+            # Count data processing capabilities  
+            if tags.intersection({"sql", "data", "query", "dataframe", "transform"}):
+                candidate_types["data"] += 2
+                
+            # Count document processing capabilities
+            if tags.intersection({"extract", "parse", "pdf", "invoice"}):
+                candidate_types["doc"] += 2
+                
+            # Count file operations
+            if tags.intersection({"file", "read", "upload"}):
+                candidate_types["file"] += 1
+        
+        # Decision logic with priority
+        
+        # 1. File provided + document keywords = PDF tracking flow
+        if file_path and (has_doc_keyword or candidate_types["doc"] > 0):
+            return "flow_pdf_tracking"
+            
+        # 2. Strong visualization intent = plot flow
+        if has_viz_keyword and (candidate_types["viz"] > 0 or candidate_types["data"] > 0):
+            return "flow_plot"
+            
+        # 3. Document processing without file = still PDF tracking (might be general doc processing)
+        if has_doc_keyword and candidate_types["doc"] >= candidate_types["viz"]:
+            return "flow_pdf_tracking"
+            
+        # 4. Data + visualization capabilities = plot flow
+        if candidate_types["viz"] > 0 and candidate_types["data"] > 0:
+            return "flow_plot"
+            
+        # 5. Strong document processing intent (keyword + capabilities)
+        if has_doc_keyword and candidate_types["doc"] > 0:
+            return "flow_pdf_tracking"
+            
+        # 6. File provided with any document capabilities
+        if file_path and candidate_types["doc"] > 0:
+            return "flow_pdf_tracking"
+            
+        # 7. Default to dynamic flow for ambiguous cases
+        return "flow_dynamic"
+
     def _has_visualization_intent(self, tags: set) -> bool:
         """Check if tags indicate visualization intent"""
         viz_tags = {"plot", "chart", "visualization", "render", "image"}
@@ -104,6 +166,20 @@ class Router:
         # Strong document processing intent: file provided AND doc tags, OR multiple doc tags
         return (file_path is not None and bool(doc_tags.intersection(tags))) or \
                (bool(file_tags.intersection(tags)) and bool(doc_tags.intersection(tags)))
+    
+    def _build_context(self, query: str, file_path: str = None, candidates: list = None) -> Dict:
+        """Build context information from query, file path, and capability candidates"""
+        context = self._extract_context(query, file_path)
+        
+        # Add capability metadata to context
+        if candidates:
+            context["capability_metadata"] = {
+                "total_candidates": len(candidates),
+                "top_capabilities": [c["id"] for c in candidates[:3]],
+                "capability_types": list(set(c.get("type", "unknown") for c in candidates))
+            }
+        
+        return context
     
     def _extract_context(self, query: str, file_path: str = None) -> Dict:
         """Extract context information from query"""
