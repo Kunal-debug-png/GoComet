@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 from typing import Dict, Tuple
+from app.config import Config
 
 class Router:
-    def __init__(self, capability_index_path: str = "./config/capability_index.json"):
-        self.index = self._load_index(capability_index_path)
+    def __init__(self, capability_index_path: str = None):
+        self.index = self._load_index(capability_index_path or Config.CAPABILITY_INDEX_PATH)
     
     def _load_index(self, path: str) -> Dict:
         """Load capability index"""
@@ -61,33 +62,76 @@ class Router:
     
     def route(self, query: str, file_path: str = None) -> Tuple[str, Dict]:
         """
-        Classify query and return flow type
+        Classify query using capability index and return flow type
         Returns: (flow_type, context)
         """
-        query_lower = query.lower()
+        # Use capability index to find matching tools/agents
+        candidates = self.search_capabilities(query, top_k=10)
         
-        # Flow 1: Plot/Chart/Visualization
-        if any(kw in query_lower for kw in ["plot", "chart", "visualize", "graph"]):
-            # Extract outlet number if present
-            outlet = None
-            if "outlet" in query_lower:
-                words = query.split()
-                for i, word in enumerate(words):
-                    if word.lower() == "outlet" and i + 1 < len(words):
-                        try:
-                            outlet = int(words[i + 1])
-                        except ValueError:
-                            pass
-            
-            return "flow_plot", {"outlet": outlet}
-        
-        # Flow 2: PDF + Tracking
-        elif file_path and any(kw in query_lower for kw in ["upload", "invoice", "tracking", "update"]):
-            return "flow_pdf_tracking", {"file_path": file_path}
-        
-        # Default to search-based routing
-        else:
+        if not candidates:
             return "flow_custom", {}
+        
+        # Extract tags from top candidates
+        all_tags = set()
+        for candidate in candidates:
+            all_tags.update(candidate.get("tags", []))
+        
+        # Extract context from query
+        context = self._extract_context(query, file_path)
+        
+        # Determine flow type based on capability tags (order matters)
+        if self._has_document_processing_intent(all_tags, file_path):
+            return "flow_pdf_tracking", context
+        elif self._has_visualization_intent(all_tags):
+            return "flow_plot", context
+        else:
+            # Dynamic flow based on capabilities
+            return "flow_dynamic", {"candidates": candidates, **context}
+    
+    def _has_visualization_intent(self, tags: set) -> bool:
+        """Check if tags indicate visualization intent"""
+        viz_tags = {"plot", "chart", "visualization", "render", "image"}
+        data_tags = {"sql", "data", "sales", "orders"}
+        
+        # Need both visualization AND data tags for plot flow
+        return bool(viz_tags.intersection(tags)) and bool(data_tags.intersection(tags))
+    
+    def _has_document_processing_intent(self, tags: set, file_path: str) -> bool:
+        """Check if tags indicate document processing intent"""
+        doc_tags = {"pdf", "extract", "document", "invoice"}
+        file_tags = {"file", "upload"}
+        
+        # Strong document processing intent: file provided AND doc tags, OR multiple doc tags
+        return (file_path is not None and bool(doc_tags.intersection(tags))) or \
+               (bool(file_tags.intersection(tags)) and bool(doc_tags.intersection(tags)))
+    
+    def _extract_context(self, query: str, file_path: str = None) -> Dict:
+        """Extract context information from query"""
+        context = {}
+        
+        # Extract outlet number
+        if "outlet" in query.lower():
+            words = query.split()
+            for i, word in enumerate(words):
+                if word.lower() == "outlet" and i + 1 < len(words):
+                    try:
+                        context["outlet"] = int(words[i + 1])
+                    except ValueError:
+                        pass
+        
+        # Add file path if provided
+        if file_path:
+            context["file_path"] = file_path
+        
+        # Extract time periods
+        if "week" in query.lower():
+            context["time_period"] = "weekly"
+        elif "month" in query.lower():
+            context["time_period"] = "monthly"
+        elif "day" in query.lower():
+            context["time_period"] = "daily"
+        
+        return context
     
     def search_capabilities(self, query: str, top_k: int = 5) -> list:
         """Search capability index (simple keyword matching)"""

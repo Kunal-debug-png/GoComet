@@ -101,6 +101,30 @@ async def get_run(run_id: str):
         if not run:
             raise HTTPException(status_code=404, detail="Run not found")
         
+        # Calculate real metrics from database
+        def calculate_run_metrics(run_id: str) -> dict:
+            nodes = db.get_run_nodes(run_id)
+            if not nodes:
+                return {"total_duration_ms": 0, "node_count": 0, "success_count": 0}
+            
+            total_duration = 0
+            success_count = 0
+            
+            for node in nodes:
+                if node.get("status") == "success":
+                    success_count += 1
+                
+                start_ms = node.get("start_ms")
+                end_ms = node.get("end_ms")
+                if start_ms and end_ms:
+                    total_duration += (end_ms - start_ms)
+            
+            return {
+                "total_duration_ms": total_duration,
+                "node_count": len(nodes),
+                "success_count": success_count
+            }
+        
         # Get result from in-memory storage
         if run_id not in run_results:
             return RunStatusResponse(
@@ -108,7 +132,7 @@ async def get_run(run_id: str):
                 status="running",
                 result=None,
                 artifacts=[],
-                metrics={"total_duration_ms": 0, "node_count": 0, "success_count": 0},
+                metrics=calculate_run_metrics(run_id),
                 error=None
             )
         
@@ -130,7 +154,7 @@ async def get_run(run_id: str):
             status=result_data["status"],
             result=result_data["result"],
             artifacts=artifact_uris,
-            metrics={"total_duration_ms": 0, "node_count": 0, "success_count": 0},
+            metrics=calculate_run_metrics(run_id),
             error=result_data.get("error")
         )
     
@@ -142,7 +166,7 @@ async def get_run(run_id: str):
 @router.get("/metrics")
 async def get_metrics():
     """Get system metrics"""
-    return {
-        "runs_total": 0, 
-        "nodes_total": {"success": 0, "failed": 0}
-    }
+    try:
+        return db.get_metrics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")

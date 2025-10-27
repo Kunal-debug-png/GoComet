@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 from datetime import datetime
 import uuid
+from app.config import Config
 
 class TrackingServer:
-    def __init__(self, db_path: str = "./samples/tracking.json"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str = None):
+        self.db_path = Path(db_path or Config.TRACKING_JSON_PATH)
         self._ensure_db()
     
     def _ensure_db(self):

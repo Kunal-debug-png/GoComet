@@ -3,10 +3,11 @@ import json
 from datetime import datetime
 from typing import Optional, Dict, List
 from pathlib import Path
+from app.config import Config
 
 class Database:
-    def __init__(self, db_path: str = "./orchestrator.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path or Config.DATABASE_PATH
         self._init_db()
     
     def _init_db(self):
@@ -195,3 +196,55 @@ class Database:
         conn.close()
         
         return [dict(row) for row in rows]
+    
+    def get_metrics(self) -> Dict:
+        """Get system metrics"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Count total runs
+        cursor.execute("SELECT COUNT(*) FROM runs")
+        runs_total = cursor.fetchone()[0]
+        
+        # Count nodes by status
+        cursor.execute("""
+            SELECT status, COUNT(*) 
+            FROM nodes 
+            GROUP BY status
+        """)
+        nodes_by_status = dict(cursor.fetchall())
+        
+        # Calculate timing percentiles
+        cursor.execute("""
+            SELECT (end_ms - start_ms) as duration
+            FROM nodes 
+            WHERE start_ms IS NOT NULL AND end_ms IS NOT NULL
+            AND status = 'success'
+        """)
+        durations = [row[0] for row in cursor.fetchall()]
+        
+        conn.close()
+        
+        # Calculate percentiles
+        if durations:
+            durations.sort()
+            n = len(durations)
+            p50 = durations[int(n * 0.5)] if n > 0 else 0
+            p95 = durations[int(n * 0.95)] if n > 0 else 0
+        else:
+            p50 = p95 = 0
+        
+        return {
+            "runs_total": runs_total,
+            "nodes_total": {
+                "success": nodes_by_status.get("success", 0),
+                "failed": nodes_by_status.get("failed", 0),
+                "pending": nodes_by_status.get("pending", 0),
+                "running": nodes_by_status.get("running", 0)
+            },
+            "latency_ms": {
+                "p50": float(p50),
+                "p95": float(p95),
+                "count": len(durations)
+            }
+        }

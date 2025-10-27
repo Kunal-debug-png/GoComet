@@ -1,9 +1,10 @@
 import duckdb
 from pathlib import Path
+from app.config import Config
 
 class SQLServer:
-    def __init__(self, csv_path: str = "./samples/orders.csv"):
-        self.csv_path = csv_path
+    def __init__(self, csv_path: str = None):
+        self.csv_path = csv_path or Config.ORDERS_CSV_PATH
         self.conn = duckdb.connect(':memory:')
     
     def sql_query(self, sql: str) -> dict:

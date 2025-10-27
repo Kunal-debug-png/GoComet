@@ -3,10 +3,11 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, Optional
 import pandas as pd
+from app.config import Config
 
 class ArtifactManager:
-    def __init__(self, base_path: str = "./artifacts"):
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: str = None):
+        self.base_path = Path(base_path or Config.ARTIFACTS_PATH)
         self.base_path.mkdir(parents=True, exist_ok=True)
     
     def write(self, run_id: str, node_id: str, data: Any, 

@@ -1,10 +1,21 @@
 import json
 from typing import Dict, List
 import uuid
+from app.config import Config
+from pathlib import Path
 
 class Planner:
     def __init__(self):
         self.templates = self._load_templates()
+        self.capability_index = self._load_capability_index()
+    
+    def _load_capability_index(self) -> Dict:
+        """Load capability index for dynamic planning"""
+        index_path = Path(Config.CAPABILITY_INDEX_PATH)
+        if index_path.exists():
+            with open(index_path, 'r') as f:
+                return json.load(f)
+        return {"capabilities": []}
     
     def _load_templates(self) -> Dict:
         """Load DAG templates"""
@@ -68,7 +79,7 @@ class Planner:
                         "type": "tool",
                         "server": "srv_fs",
                         "tool": "file.read",
-                        "args": {"path": "./samples/invoice.pdf"}
+                        "args": {"path": "./samples/sample1-pdf.pdf"}
                     },
                     {
                         "id": "extract",
@@ -106,12 +117,21 @@ class Planner:
         }
     
     def plan(self, flow_type: str, query: str, context: Dict) -> Dict:
-        """Build DAG plan from template"""
-        if flow_type not in self.templates:
-            raise ValueError(f"Unknown flow type: {flow_type}")
-        
-        template = self.templates[flow_type]
+        """Build DAG plan - template-based or dynamic"""
         plan_id = f"pln_{uuid.uuid4().hex[:8]}"
+        
+        if flow_type == "flow_dynamic":
+            # Build DAG dynamically from capability index
+            return self._build_dynamic_plan(plan_id, query, context)
+        elif flow_type in self.templates:
+            # Use template-based planning
+            return self._build_template_plan(plan_id, flow_type, context)
+        else:
+            raise ValueError(f"Unknown flow type: {flow_type}")
+    
+    def _build_template_plan(self, plan_id: str, flow_type: str, context: Dict) -> Dict:
+        """Build plan from predefined template"""
+        template = self.templates[flow_type]
         
         # Deep copy template
         plan = json.loads(json.dumps(template))
@@ -131,7 +151,6 @@ class Planner:
                 read_node = next(n for n in plan["nodes"] if n["id"] == "read")
                 read_node["args"]["path"] = file_path
             else:
-                # Default to sample1-pdf.pdf if no file path provided
                 read_node = next(n for n in plan["nodes"] if n["id"] == "read")
                 read_node["args"]["path"] = "./samples/sample1-pdf.pdf"
         
@@ -140,8 +159,103 @@ class Planner:
             "flow_type": flow_type,
             "nodes": plan["nodes"],
             "edges": plan["edges"],
-            "budgets": {
-                "latency_ms": 30000,
-                "cost_usd": 1.5
-            }
+            "budgets": {"latency_ms": 30000, "cost_usd": 1.5}
         }
+    
+    def _build_dynamic_plan(self, plan_id: str, query: str, context: Dict) -> Dict:
+        """Build DAG dynamically from capability index"""
+        candidates = context.get("candidates", [])
+        
+        if not candidates:
+            # Fallback to simple plan
+            return {
+                "plan_id": plan_id,
+                "flow_type": "flow_dynamic",
+                "nodes": [],
+                "edges": [],
+                "budgets": {"latency_ms": 30000, "cost_usd": 1.5}
+            }
+        
+        # Build nodes from capabilities
+        nodes = []
+        edges = []
+        
+        # Group capabilities by type
+        tools = [c for c in candidates if c.get("type") == "tool"]
+        agents = [c for c in candidates if c.get("type") == "agent"]
+        
+        # Create nodes for top tools
+        for i, tool in enumerate(tools[:3]):  # Limit to top 3 tools
+            node = {
+                "id": tool["id"],
+                "type": "tool",
+                "server": tool["server"],
+                "tool": tool["tool"],
+                "args": self._generate_tool_args(tool, context)
+            }
+            
+            # Add input bindings for chaining
+            if i > 0:
+                prev_tool = tools[i-1]
+                node["input_bindings"] = {
+                    "input_data": f"artifact://{prev_tool['id']}/output.json"
+                }
+            
+            nodes.append(node)
+            
+            # Create edge to previous node
+            if i > 0:
+                edges.append([tools[i-1]["id"], tool["id"]])
+        
+        # Add validation and reduction agents
+        for agent in agents:
+            if agent["id"] in ["validator", "reducer"]:
+                node = {
+                    "id": agent["id"],
+                    "type": "agent",
+                    "agent": agent["agent"],
+                    "args": {"type": "dynamic"}
+                }
+                
+                # Connect to last tool
+                if tools:
+                    last_tool = tools[-1] if len(tools) <= 3 else tools[2]
+                    node["input_bindings"] = {
+                        "input_ref": f"artifact://{last_tool['id']}/output.json"
+                    }
+                    edges.append([last_tool["id"], agent["id"]])
+                
+                nodes.append(node)
+        
+        return {
+            "plan_id": plan_id,
+            "flow_type": "flow_dynamic",
+            "nodes": nodes,
+            "edges": edges,
+            "budgets": {"latency_ms": 30000, "cost_usd": 1.5}
+        }
+    
+    def _generate_tool_args(self, tool: Dict, context: Dict) -> Dict:
+        """Generate appropriate args for a tool based on context"""
+        tool_name = tool.get("tool", "")
+        
+        if "sql.query" in tool_name:
+            outlet = context.get("outlet")
+            if outlet:
+                return {"sql": f"outlet_id = {outlet}"}
+            return {"sql": "1=1"}
+        
+        elif "file.read" in tool_name:
+            file_path = context.get("file_path", "./samples/sample1-pdf.pdf")
+            return {"path": file_path}
+        
+        elif "dataframe.transform" in tool_name:
+            time_period = context.get("time_period", "weekly")
+            if time_period == "weekly":
+                return {"script": "groupby('week').sum()"}
+            return {"script": "head(20)"}
+        
+        elif "plotly.render" in tool_name:
+            return {"format": "png"}
+        
+        return {}
