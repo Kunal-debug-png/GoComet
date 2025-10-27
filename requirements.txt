@@ -1,11 +1,30 @@
+# Web Framework
 fastapi
 uvicorn[standard]
 pydantic
+
+# Data Processing
 pandas
 duckdb
+
+# Visualization
 plotly
 kaleido
-structlog
+
+# Graph/DAG Processing
 networkx
+
+# PDF Processing
 pdfplumber
-Pillow
+
+# Logging
+structlog
+
+# Date Parsing
+python-dateutil
+
+# Environment Variables
+python-dotenv
+
+# Optional: LlamaCloud for advanced PDF extraction
+# llama-cloud-services
